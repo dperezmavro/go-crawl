@@ -1,16 +1,11 @@
 package main
 
-import (
-	"regexp"
-)
+import "regexp"
+
+var regex = regexp.MustCompile("href=\"(https?://)?([a-zA-Z/.%0-9-]+)\"")
 
 func extractLinks(page []byte) ([]string, error) {
-	regexp, err := regexp.Compile("href=\"(https?://)?([a-zA-Z/.%0-9-]+)\"")
-	if err != nil {
-		return nil, err
-	}
-
-	results := regexp.FindAllStringSubmatch(string(page), -1)
+	results := regex.FindAllStringSubmatch(string(page), -1)
 	var filteredResults []string
 	for _, result := range results {
 		filteredResults = append(filteredResults, result[2])
