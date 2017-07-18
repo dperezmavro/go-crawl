@@ -7,7 +7,7 @@ import (
 	"net/url"
 )
 
-func get(url url.URL) ([]byte, error) {
+func get(url *url.URL) ([]byte, error) {
 	resp, err := http.Get(url.String())
 	if err != nil {
 		log.Printf("[-] get(1): %q", err)

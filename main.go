@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"log"
 	"net/url"
 	"os"
@@ -27,67 +26,18 @@ func initialise() {
 	flag.Parse()
 }
 
-func pollToCrawlChan() {
-	log.Println("[+] pollToCrawlChan")
-	for {
-		var ok bool
-		var url string
-		url, ok = <-toCrawl
-
-		fmt.Printf("OK: %v", ok)
-		wg.Add(1)
-		go getPage(url)
-	}
-
-	wg.Done()
-}
-
-func getPage(u string) {
-	defer wg.Done()
-
-	log.Printf("[+] URL: %s", u)
-
-	var tempUrl url.URL
-	if !tempUrl.IsAbs() {
-		tmp, err := url.Parse("http://" + tempUrl.String())
-		checkErr(err)
-
-		tempUrl = *tmp
-	}
-
-	body, err := get(tempUrl)
-	checkErr(err)
-
-	urls, err := extractLinks(body)
-	checkErr(err)
-
-	urls = filterExternalLinks(
-		urls,
-		stripProtocol(crawlUrl),
-	)
-	urls = stripPrefix(
-		urls,
-		urlNoProtocol,
-	)
-
-	doneCrawaling <- crawlResult{
-		tempUrl.String(),
-		urls,
-	}
-}
-
 func processResults() {
 	log.Println("[+] processResults")
 	for {
 		var result = <-doneCrawaling
-		log.Printf("[+] Crawling url %s", result.url)
-		// for _, u := range result.links {
-		// 	tempUrl, err := url.Parse(u)
-		// 	checkErr(err)
-		// 	if tempUrl.IsAbs() {
-		// 		//toCrawl <- *tempUrl
-		// 	}
-		// }
+		log.Printf("[+] Done crawling url %s, links : %v", result.url, result.links)
+		for _, u := range result.links {
+			tempUrl, err := url.Parse(u)
+			checkErr(err)
+			if tempUrl.IsAbs() {
+				//toCrawl <- *tempUrl
+			}
+		}
 	}
 
 	wg.Done()
