@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"regexp"
 	"strings"
+	"time"
 )
 
 var regex = regexp.MustCompile("href=\"(https?://)?([a-zA-Z/.%0-9-]+)\"")
@@ -22,23 +23,19 @@ func extractLinks(page []byte) ([]string, error) {
 func pollToCrawlChan() {
 	log.Println("[+] pollToCrawlChan")
 	for {
-		var ok bool
 		var url string
-		url, ok = <-toCrawl
-		if !ok {
-			log.Println("Exiting!")
-			break
+		select {
+		case url = <-toCrawl:
+			wg.Add(1)
+
+			u, err := formatUrl(url)
+			checkErr(err)
+			go getPage(u)
+		case <-time.After(time.Second * 10):
+			wg.Done()
+			return
 		}
-
-		wg.Add(1)
-		log.Println("Fetching", url)
-
-		u, err := formatUrl(url)
-		checkErr(err)
-		go getPage(u)
 	}
-
-	wg.Done()
 }
 
 func formatUrl(u string) (*url.URL, error) {

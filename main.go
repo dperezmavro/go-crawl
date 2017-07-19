@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"time"
 )
 
 var startingCrawlUrl string
@@ -14,7 +15,7 @@ var hostName string
 var toCrawl = make(chan string, 5000)
 var doneCrawaling = make(chan crawlResult)
 var wg sync.WaitGroup
-var urls map[string]string
+var urls = make(map[string]string)
 
 type crawlResult struct {
 	url   string
@@ -28,26 +29,32 @@ func initialise() {
 
 func processResults() {
 	log.Println("[+] processResults")
+	var result crawlResult
 	for {
-		result, ok := <-doneCrawaling
-		if !ok {
-			break
-		}
+		select {
+		case result = <-doneCrawaling:
+			for _, u := range result.links {
+				tempUrl, err := formatUrl(u)
+				checkErr(err)
 
-		for _, u := range result.links {
-			tempUrl, err := formatUrl(u)
-			checkErr(err)
-
-			if !isExternal(tempUrl) {
-				toCrawl <- tempUrl.String()
-			} else {
-				log.Printf("[*] Ignoring url %s", tempUrl.String())
+				if !isExternal(tempUrl) {
+					if urls[tempUrl.String()] == "" {
+						urls[tempUrl.String()] = "done"
+						toCrawl <- tempUrl.String()
+					} else {
+						log.Printf("[*] Ignoring existing url %s", tempUrl.String())
+					}
+				} else {
+					log.Printf("[*] Ignoring external URL: %s", tempUrl.String())
+				}
 			}
 
+		case <-time.After(time.Second * 5):
+			wg.Done()
+			return
 		}
-	}
 
-	wg.Done()
+	}
 }
 
 func main() {
@@ -70,8 +77,6 @@ func main() {
 		checkErr(err)
 	}
 	hostName = url.Hostname()
-	log.Printf("[+] Hostname is %s %s", hostName, url.Hostname())
-
 	toCrawl <- startingCrawlUrl
 
 	wg.Add(2)
@@ -80,7 +85,7 @@ func main() {
 
 	wg.Wait()
 
-	for _, url := range urls {
-		log.Print(url)
+	for v, _ := range urls {
+		log.Printf("[+] url : %s", v)
 	}
 }
