@@ -31,7 +31,7 @@ func pollToCrawlChan() {
 			u, err := formatUrl(url)
 			checkErr(err)
 			go getPage(u)
-		case <-time.After(time.Second * 10):
+		case <-time.After(time.Second * 5):
 			wg.Done()
 			return
 		}
