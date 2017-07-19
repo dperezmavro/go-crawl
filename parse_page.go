@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/url"
 	"regexp"
+	"strings"
 )
 
 var regex = regexp.MustCompile("href=\"(https?://)?([a-zA-Z/.%0-9-]+)\"")
@@ -30,7 +31,11 @@ func pollToCrawlChan() {
 		}
 
 		wg.Add(1)
-		go getPage(url)
+		log.Println("Fetching", url)
+
+		u, err := formatUrl(url)
+		checkErr(err)
+		go getPage(u)
 	}
 
 	wg.Done()
@@ -40,6 +45,11 @@ func formatUrl(u string) (*url.URL, error) {
 	tempUrl, err := url.Parse(u)
 	if err != nil {
 		return nil, err
+	}
+
+	if strings.HasPrefix(tempUrl.String(), "/") {
+		tempUrl.Host = hostName
+		tempUrl.Scheme = "http"
 	}
 
 	if !tempUrl.IsAbs() {
@@ -52,31 +62,16 @@ func formatUrl(u string) (*url.URL, error) {
 	return tempUrl, nil
 }
 
-func getPage(u string) {
+func getPage(u *url.URL) {
 	defer wg.Done()
 
-	log.Printf("[+] URL: %s", u)
-
-	tempUrl, err := formatUrl(u)
-	checkErr(err)
-
-	body, err := get(tempUrl)
+	body, err := get(u)
 	checkErr(err)
 	urls, err := extractLinks(body)
 	checkErr(err)
 
-	// urls = filterExternalLinks(
-	// 	urls,
-	// 	stripProtocol(crawlUrl),
-	// )
-
-	// urls = stripPrefix(
-	// 	urls,
-	// 	urlNoProtocol,
-	// )
-
 	doneCrawaling <- crawlResult{
-		tempUrl.String(),
+		u.String(),
 		urls,
 	}
 }

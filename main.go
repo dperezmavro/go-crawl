@@ -9,12 +9,12 @@ import (
 	"sync"
 )
 
-var crawlUrl string
+var startingCrawlUrl string
 var hostName string
-var urlNoProtocol string
 var toCrawl = make(chan string, 5000)
 var doneCrawaling = make(chan crawlResult)
 var wg sync.WaitGroup
+var urls map[string]string
 
 type crawlResult struct {
 	url   string
@@ -22,21 +22,28 @@ type crawlResult struct {
 }
 
 func initialise() {
-	flag.StringVar(&crawlUrl, "url", "", "A Url to crawl")
+	flag.StringVar(&startingCrawlUrl, "url", "", "A Url to crawl")
 	flag.Parse()
 }
 
 func processResults() {
 	log.Println("[+] processResults")
 	for {
-		var result = <-doneCrawaling
-		log.Printf("[+] Done crawling url %s, links : %v", result.url, result.links)
+		result, ok := <-doneCrawaling
+		if !ok {
+			break
+		}
+
 		for _, u := range result.links {
-			tempUrl, err := url.Parse(u)
+			tempUrl, err := formatUrl(u)
 			checkErr(err)
-			if tempUrl.IsAbs() {
-				//toCrawl <- *tempUrl
+
+			if !isExternal(tempUrl) {
+				toCrawl <- tempUrl.String()
+			} else {
+				log.Printf("[*] Ignoring url %s", tempUrl.String())
 			}
+
 		}
 	}
 
@@ -46,22 +53,26 @@ func processResults() {
 func main() {
 	initialise()
 
-	if crawlUrl == "" {
+	if startingCrawlUrl == "" {
 		flag.Usage()
 		os.Exit(1)
 	}
 
-	url, err := url.Parse(crawlUrl)
+	url, err := url.Parse(startingCrawlUrl)
 	checkErr(err)
 
-	hostName = url.Hostname()
 	if !url.IsAbs() {
-		crawlUrl = strings.Join([]string{"http://", crawlUrl}, "")
+		startingCrawlUrl = strings.Join(
+			[]string{"http://", startingCrawlUrl},
+			"",
+		)
+		url, err = url.Parse(startingCrawlUrl)
+		checkErr(err)
 	}
+	hostName = url.Hostname()
+	log.Printf("[+] Hostname is %s %s", hostName, url.Hostname())
 
-	urlNoProtocol = stripProtocol(crawlUrl)
-
-	toCrawl <- url.String()
+	toCrawl <- startingCrawlUrl
 
 	wg.Add(2)
 	go pollToCrawlChan()
@@ -69,7 +80,7 @@ func main() {
 
 	wg.Wait()
 
-	// for _, url := range urls {
-	// 	log.Print(url)
-	// }
+	for _, url := range urls {
+		log.Print(url)
+	}
 }
