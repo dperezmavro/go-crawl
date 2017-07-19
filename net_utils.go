@@ -23,3 +23,17 @@ func get(url *url.URL) ([]byte, error) {
 
 	return body, nil
 }
+
+func getPage(u *url.URL) {
+	defer wg.Done()
+
+	body, err := get(u)
+	checkErr(err)
+	urls, err := extractLinks(body)
+	checkErr(err)
+
+	doneCrawling <- crawlResult{
+		u.String(),
+		urls,
+	}
+}
