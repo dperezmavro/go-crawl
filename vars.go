@@ -1,6 +1,11 @@
 package main
 
-import "sync"
+import (
+	"sync"
+	"time"
+)
+
+const timeout = time.Second * 5
 
 var startingCrawlUrl string
 var hostName string

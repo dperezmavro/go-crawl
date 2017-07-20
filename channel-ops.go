@@ -16,8 +16,9 @@ func pollToCrawlChan() {
 			u, err := formatUrl(url)
 			checkErr(err)
 			go getPage(u)
-		case <-time.After(time.Second * 5):
+		case <-time.After(timeout):
 			wg.Done()
+			log.Println("[+] pollToCrawlChan timeout!")
 			return
 		}
 	}
@@ -35,9 +36,10 @@ func processResults() {
 				storeUrl(tempUrl)
 			}
 
-		case <-time.After(time.Second * 5):
+		case <-time.After(timeout):
 			wg.Done()
 			close(toCrawl)
+			log.Println("[+] processResults timeout")
 			return
 		}
 
