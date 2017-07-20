@@ -3,9 +3,7 @@ package main
 import (
 	"flag"
 	"log"
-	"net/url"
 	"os"
-	"strings"
 )
 
 func initialise() {
@@ -21,17 +19,9 @@ func main() {
 		os.Exit(1)
 	}
 
-	url, err := url.Parse(startingCrawlUrl)
+	url, err := formatUrl(startingCrawlUrl)
 	checkErr(err)
 
-	if !url.IsAbs() {
-		startingCrawlUrl = strings.Join(
-			[]string{"http://", startingCrawlUrl},
-			"",
-		)
-		url, err = url.Parse(startingCrawlUrl)
-		checkErr(err)
-	}
 	hostName = url.Hostname()
 	toCrawl <- startingCrawlUrl
 
