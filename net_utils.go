@@ -37,3 +37,17 @@ func getPage(u *url.URL) {
 		urls,
 	}
 }
+
+func storeUrl(newUrl *url.URL) {
+	var u string = newUrl.String()
+	if !isExternal(newUrl) {
+		if urls[u] == "" {
+			urls[u] = u
+			toCrawl <- u
+		} else {
+			log.Printf("[*] Ignoring existing url %s", u)
+		}
+	} else {
+		log.Printf("[*] Ignoring external URL: %s", u)
+	}
+}
